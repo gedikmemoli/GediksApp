@@ -1,0 +1,480 @@
+{
+  "classes": [
+    {
+      "id": "fighter",
+      "name": "Fighter",
+      "turkishName": "Savaşçı",
+      "icon": "shield-sword",
+      "hitDie": "d10",
+      "baseAc": 18,
+      "primaryStat": "STR / CON",
+      "description": "Her türlü silah ve zırhta ustalaşmış, ön safların yenilmez yakın dövüş uzmanı.",
+      "levels": {
+        "1": {
+          "hp": 13,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Weapon Attack (Yakın/Menzilli Silah Saldırısı - 1d8+3)",
+            "Second Wind (Bonus Aksiyon: 1d10+1 Can Yenileme - Kısa Dinlenme)"
+          ],
+          "spellSlots": {},
+          "features": [
+            {
+              "name": "Fighting Style: Defense",
+              "description": "Zırh giyerken Zırh Sınıfına (AC) +1 kalıcı bonus kazanırsın."
+            },
+            {
+              "name": "Second Wind",
+              "description": "Savaşta dayanıklılığını toplayarak 1d10 + Fighter seviyen kadar HP iyileştirirsin."
+            }
+          ]
+        },
+        "2": {
+          "hp": 22,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Weapon Attack (Yakın/Menzilli Silah Saldırısı - 1d8+3)",
+            "Second Wind (Bonus Aksiyon: 1d10+2 Can Yenileme)",
+            "Action Surge (Turunda 1 Ekstra Tam Aksiyon Hakkı - Kısa Dinlenme)"
+          ],
+          "spellSlots": {},
+          "features": [
+            {
+              "name": "Fighting Style: Defense",
+              "description": "Zırh giyerken Zırh Sınıfına (AC) +1 kalıcı bonus kazanırsın."
+            },
+            {
+              "name": "Second Wind",
+              "description": "Bonus aksiyon ile 1d10 + 2 HP yenilersin."
+            },
+            {
+              "name": "Action Surge (1/Dinlenme)",
+              "description": "Normal aksiyonuna ek olarak aynı tur içinde fazladan 1 tam aksiyon daha gerçekleştirirsin."
+            }
+          ]
+        },
+        "3": {
+          "hp": 31,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Weapon Attack (19-20 Kritik Aralıklı Saldırı - 1d8+3)",
+            "Second Wind (Bonus Aksiyon: 1d10+3 Can Yenileme)",
+            "Action Surge (Turunda 1 Ekstra Tam Aksiyon)"
+          ],
+          "spellSlots": {},
+          "features": [
+            {
+              "name": "Martial Archetype: Champion",
+              "description": "Fiziksel mükemmelliğe odaklanan dövüş uzmanlığı."
+            },
+            {
+              "name": "Improved Critical",
+              "description": "Silah saldırıların sadece 20'de değil, 19 ve 20 zarlarında da Kritik Vuruş (Critical Hit) sayılır."
+            },
+            {
+              "name": "Action Surge & Second Wind",
+              "description": "Ekstra aksiyon ve 1d10 + 3 HP yenileme yetenekleri."
+            }
+          ]
+        },
+        "4": {
+          "hp": 40,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Weapon Attack (Gelişmiş Güç: 1d8+4, 19-20 Kritik)",
+            "Second Wind (Bonus Aksiyon: 1d10+4 Can Yenileme)",
+            "Action Surge (Turunda 1 Ekstra Tam Aksiyon)",
+            "Shield Bash (Kalkan Darbesi ile Düşmanı Devirme)"
+          ],
+          "spellSlots": {},
+          "features": [
+            {
+              "name": "Ability Score Improvement (+2 STR)",
+              "description": "Kuvvet (STR) skorun artarak saldırı ve hasar zarlarına +1 ek bonus sağlar."
+            },
+            {
+              "name": "Improved Critical (19-20)",
+              "description": "19 ve 20 zarlarında kritik hasar vurursun."
+            }
+          ]
+        },
+        "5": {
+          "hp": 49,
+          "proficiencyBonus": "+3",
+          "actions": [
+            "Extra Attack (Tek Aksiyonda 2 Ayrı Silah Saldırısı - 2x 1d8+4)",
+            "Action Surge (Kullanıldığında Turda Toplam 4 Saldırı!)",
+            "Second Wind (Bonus Aksiyon: 1d10+5 Can Yenileme)"
+          ],
+          "spellSlots": {},
+          "features": [
+            {
+              "name": "Extra Attack (İkili Saldırı)",
+              "description": "Saldırı aksiyonu aldığında bir yerine iki kez saldırabilirsin."
+            },
+            {
+              "name": "Improved Critical & Action Surge",
+              "description": "19-20 kritik aralığı ve ekstra aksiyon kombinasyonu."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "wizard",
+      "name": "Wizard",
+      "turkishName": "Büyücü",
+      "icon": "book-open-variant",
+      "hitDie": "d6",
+      "baseAc": 13,
+      "primaryStat": "INT / WIS",
+      "description": "Kadim büyü kitaplarından evrenin dokusunu büken, yüksek yıkım ve kontrol gücüne sahip arkan üstadı.",
+      "levels": {
+        "1": {
+          "hp": 8,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Fire Bolt (Cantrip: 1d10 Ateş Hasarı - Sınırsız)",
+            "Magic Missile (1. Seviye Büyü: 3x 1d4+1 Otomatik İsabet)",
+            "Shield (Reaksiyon Büyüsü: Tur Sonuna Kadar +5 AC)",
+            "Arcane Recovery (Kısa Dinlenmede 1 Adet 1. Seviye Slot Yenileme)"
+          ],
+          "spellSlots": {
+            "Cantrip": 3,
+            "1. Seviye": 2
+          },
+          "features": [
+            {
+              "name": "Spellcasting (Arkan Büyücülük)",
+              "description": "Büyü kitabındaki hazırlanan büyüleri Zeka (INT) modifikasyonunla kullanırsın (Spell Save DC 13)."
+            },
+            {
+              "name": "Arcane Recovery",
+              "description": "Günde bir kez kısa dinlenme sırasında harcanmış büyü slotlarını geri kazanırsın."
+            }
+          ]
+        },
+        "2": {
+          "hp": 14,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Fire Bolt (Cantrip: 1d10 Ateş Hasarı)",
+            "Burning Hands (1. Seviye: 3d6 Alan Ateş Hasarı - Sculpt Spells)",
+            "Magic Missile (1. Seviye: 3x 1d4+1 Güç Hasarı)",
+            "Arcane Recovery (1. Seviye Slot Yenileme)"
+          ],
+          "spellSlots": {
+            "Cantrip": 3,
+            "1. Seviye": 3
+          },
+          "features": [
+            {
+              "name": "Arcane Tradition: School of Evocation",
+              "description": "Elementleri ve saf enerjiyi yıkıcı büyülere dönüştürme uzmanlığı."
+            },
+            {
+              "name": "Sculpt Spells (Büyü Şekillendirme)",
+              "description": "Alan etkili Evocation büyülerinde dost karakterlerin otomatik kurtulmasını ve hasar almamasını sağlarsın."
+            }
+          ]
+        },
+        "3": {
+          "hp": 20,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Scorching Ray (2. Seviye: 3 Ayrı Ateş Işını - Her Biri 2d6)",
+            "Misty Step (2. Seviye Bonus Aksiyon: 30 ft Anında Işınlanma)",
+            "Shatter (2. Seviye: 3d8 Gök Gürültüsü Alan Hasarı)",
+            "Fire Bolt & Magic Missile"
+          ],
+          "spellSlots": {
+            "Cantrip": 3,
+            "1. Seviye": 4,
+            "2. Seviye": 2
+          },
+          "features": [
+            {
+              "name": "2. Seviye Büyü Erişimi",
+              "description": "Scorching Ray, Misty Step ve Web gibi güçlü 2. seviye büyüler açıldı."
+            },
+            {
+              "name": "Sculpt Spells & Arcane Recovery",
+              "description": "Dostları alan hasarından koruma ve kısa dinlenmede toplam 2 seviyelik slot yenileme."
+            }
+          ]
+        },
+        "4": {
+          "hp": 26,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Mirror Image (2. Seviye: 3 İllüzyon Kopyası ile Savunma)",
+            "Scorching Ray (2. Seviye: 3x 2d6 Ateş Işını)",
+            "Misty Step (Bonus Aksiyon: 30 ft Işınlanma)",
+            "Mind Sliver (Yeni Cantrip: 1d6 Psişik Hasar ve -1d4 Kurtarma Zarı)"
+          ],
+          "spellSlots": {
+            "Cantrip": 4,
+            "1. Seviye": 4,
+            "2. Seviye": 3
+          },
+          "features": [
+            {
+              "name": "Ability Score Improvement (+2 INT)",
+              "description": "Zeka (INT) skorun 18'e yükseldi; Büyü Zorluk Derecesi (Spell Save DC) 14 oldu."
+            },
+            {
+              "name": "Genişletilmiş Cantrip Hafızası",
+              "description": "4 farklı Cantrip büyüsünü sınırsız kullanabilirsin."
+            }
+          ]
+        },
+        "5": {
+          "hp": 32,
+          "proficiencyBonus": "+3",
+          "actions": [
+            "Fireball (3. Seviye: 8d6 Devasa Alan Ateş Patlaması!)",
+            "Counterspell (3. Seviye Reaksiyon: Düşman Büyüsünü İptal Etme)",
+            "Fly (3. Seviye: 60 ft Uçuş Hızı Kazandırma)",
+            "Fire Bolt (Gelişmiş Cantrip: 2d10 Ateş Hasarı)"
+          ],
+          "spellSlots": {
+            "Cantrip": 4,
+            "1. Seviye": 4,
+            "2. Seviye": 3,
+            "3. Seviye": 2
+          },
+          "features": [
+            {
+              "name": "3. Seviye Yıkım Büyüleri (Fireball & Counterspell)",
+              "description": "Savaşın kaderini değiştiren 3. seviye arkan büyülere ve 2d10 Cantrip hasarına ulaştın."
+            },
+            {
+              "name": "Arcane Recovery (3. Seviye Kapasite)",
+              "description": "Kısa dinlenmede toplam 3 seviyeye kadar büyü slotunu geri doldurabilirsin."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "rogue",
+      "name": "Rogue",
+      "turkishName": "Düzenbaz",
+      "icon": "run-fast",
+      "hitDie": "d8",
+      "baseAc": 16,
+      "primaryStat": "DEX / INT",
+      "description": "Gölgelerin arasından ölümcül Sneak Attack vuruşları yapan çevik suikastçı ve kilit ustası.",
+      "levels": {
+        "1": {
+          "hp": 10,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Dagger / Rapier Attack (1d8+3 Delici Hasar)",
+            "Sneak Attack (Avantajlı Saldırıda +1d6 Ekstra Gizli Hasar)"
+          ],
+          "spellSlots": {},
+          "features": [
+            {
+              "name": "Sneak Attack (1d6)",
+              "description": "Avantajlı olduğun veya hedefin yanında müttefikin bulunduğu saldırılarda +1d6 ekstra hasar verirsin."
+            },
+            {
+              "name": "Expertise (Gizlilik & Hırsızlık Aletleri)",
+              "description": "Seçili iki yetenekte uzmanlık bonusun ikiye katlanır (+4)."
+            }
+          ]
+        },
+        "2": {
+          "hp": 17,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Rapier + Sneak Attack (1d8+3 + 1d6 Hasar)",
+            "Cunning Action (Bonus Aksiyon: Dash, Disengage veya Hide)"
+          ],
+          "spellSlots": {},
+          "features": [
+            {
+              "name": "Cunning Action (Kurnaz Aksiyon)",
+              "description": "Her tur bonus aksiyon olarak depar atabilir (Dash), çatışmadan sıyrılabilir (Disengage) veya saklanabilirsin (Hide)."
+            }
+          ]
+        },
+        "3": {
+          "hp": 24,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Assassinate + Sneak Attack (1d8+3 + 2d6 Ölümcül Hasar)",
+            "Cunning Action (Bonus Aksiyon: Dash / Disengage / Hide)",
+            "Steady Aim (Bonus Aksiyon: Hareket Etmeyerek Saldırıya Avantaj Kazanma)"
+          ],
+          "spellSlots": {},
+          "features": [
+            {
+              "name": "Roguish Archetype: Assassin",
+              "description": "Henüz sırası gelmemiş düşmanlara yapılan saldırılar avantajlıdır; şaşırtılmış hedeflere her isabet Kritiktir!"
+            },
+            {
+              "name": "Sneak Attack (2d6)",
+              "description": "Gizli saldırı ekstra hasarın 2d6'ya yükseldi."
+            }
+          ]
+        },
+        "4": {
+          "hp": 31,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Assassinate + Sneak Attack (1d8+4 + 2d6 Hasar)",
+            "Cunning Action (Bonus Aksiyon: Dash / Disengage / Hide)"
+          ],
+          "spellSlots": {},
+          "features": [
+            {
+              "name": "Ability Score Improvement (+2 DEX)",
+              "description": "Çeviklik (DEX) artışı ile hem Zırh Sınıfın (AC) hem de saldırı/hasar bonusun +1 yükseldi."
+            }
+          ]
+        },
+        "5": {
+          "hp": 38,
+          "proficiencyBonus": "+3",
+          "actions": [
+            "Assassinate + Sneak Attack (1d8+4 + 3d6 Hasar)",
+            "Uncanny Dodge (Reaksiyon: Gelen Saldırı Hasarını Yarıya İndirme!)",
+            "Cunning Action (Bonus Aksiyon: Dash / Disengage / Hide)"
+          ],
+          "spellSlots": {},
+          "features": [
+            {
+              "name": "Uncanny Dodge (Esrarengiz Kaçınma)",
+              "description": "Görebildiğin bir saldırgan sana isabet ettirdiğinde reaksiyonunu kullanarak hasarı yarıya indirirsin."
+            },
+            {
+              "name": "Sneak Attack (3d6)",
+              "description": "Gizli saldırı ekstra hasarın 3d6'ya ulaştı."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cleric",
+      "name": "Cleric",
+      "turkishName": "Rahip",
+      "icon": "heart-pulse",
+      "hitDie": "d8",
+      "baseAc": 18,
+      "primaryStat": "WIS / CON",
+      "description": "İlahi güçlerin elçisi; müttefiklerini hayata döndüren ve kutsal ışıkla düşmanları kavuran şifacı.",
+      "levels": {
+        "1": {
+          "hp": 10,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Sacred Flame (Cantrip: 1d8 Radyant Hasar - DEX Kurtarma)",
+            "Cure Wounds (1. Seviye: 1d8+6 Güçlendirilmiş İyileştirme)",
+            "Healing Word (1. Seviye Bonus Aksiyon: 60 ft Uzaktan 1d4+6 Şifa)",
+            "Bless (1. Seviye: 3 Müttefike +1d4 Saldırı ve Kurtarma Bonusu)"
+          ],
+          "spellSlots": {
+            "Cantrip": 3,
+            "1. Seviye": 2
+          },
+          "features": [
+            {
+              "name": "Divine Domain: Life Domain",
+              "description": "Ağır zırh uzmanlığı ve tüm iyileştirme büyülerine ekstra +(2 + Büyü Seviyesi) HP bonusu."
+            },
+            {
+              "name": "Disciple of Life",
+              "description": "Yaptığın her şifa büyüsü hedefi fazladan iyileştirir."
+            }
+          ]
+        },
+        "2": {
+          "hp": 17,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Channel Divinity: Turn Undead (30 ft İçindeki Hortlakları Kaçırma)",
+            "Channel Divinity: Preserve Life (Bölüştürülebilir 10 HP Havuzu)",
+            "Cure Wounds & Healing Word",
+            "Guiding Bolt (1. Seviye: 4d6 Radyant Hasar + Sonraki Saldırıya Avantaj)"
+          ],
+          "spellSlots": {
+            "Cantrip": 3,
+            "1. Seviye": 3
+          },
+          "features": [
+            {
+              "name": "Channel Divinity (1/Dinlenme)",
+              "description": "İlahi enerjiyi kanalize ederek Turn Undead veya Preserve Life (5x Seviye HP şifa) uygularsın."
+            }
+          ]
+        },
+        "3": {
+          "hp": 24,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Spiritual Weapon (2. Seviye Bonus Aksiyon: 1d8+3 Ruhani Silah Saldırısı)",
+            "Lesser Restoration (2. Seviye: Zehir, Körlük veya Felç Durumunu Kaldırma)",
+            "Channel Divinity: Preserve Life (15 HP Şifa Havuzu)",
+            "Guiding Bolt & Cure Wounds"
+          ],
+          "spellSlots": {
+            "Cantrip": 3,
+            "1. Seviye": 4,
+            "2. Seviye": 2
+          },
+          "features": [
+            {
+              "name": "Spiritual Weapon & 2. Seviye İlahi Büyüler",
+              "description": "Konsantrasyon gerektirmeyen ruhani silah ile her tur bonus aksiyonda saldırabilirsin."
+            }
+          ]
+        },
+        "4": {
+          "hp": 31,
+          "proficiencyBonus": "+2",
+          "actions": [
+            "Spiritual Weapon (Bonus Aksiyon: 1d8+4 Hasar)",
+            "Aid (2. Seviye: 3 Müttefikin Maksimum HP'sini +5 Artırma)",
+            "Channel Divinity: Preserve Life (20 HP Şifa Havuzu)"
+          ],
+          "spellSlots": {
+            "Cantrip": 4,
+            "1. Seviye": 4,
+            "2. Seviye": 3
+          },
+          "features": [
+            {
+              "name": "Ability Score Improvement (+2 WIS)",
+              "description": "Bilgelik (WIS) artışıyla tüm şifa miktarların ve Büyü Zorluk Derecen (DC 14) güçlendi."
+            }
+          ]
+        },
+        "5": {
+          "hp": 38,
+          "proficiencyBonus": "+3",
+          "actions": [
+            "Spirit Guardians (3. Seviye: 15 ft Çevredeki Düşmanlara Her Tur 3d8 Hasar!)",
+            "Revivify (3. Seviye: Yeni Ölmüş Müttefiki 1 HP İle Hayata Döndürme)",
+            "Mass Healing Word (3. Seviye Bonus Aksiyon: 6 Müttefike Aynı Anda Şifa)",
+            "Destroy Undead (CR 1/2 Altı Hortlakları Anında Yok Etme)"
+          ],
+          "spellSlots": {
+            "Cantrip": 4,
+            "1. Seviye": 4,
+            "2. Seviye": 3,
+            "3. Seviye": 2
+          },
+          "features": [
+            {
+              "name": "Destroy Undead & 3. Seviye Mucizeler",
+              "description": "Turn Undead etkisinden kurtulamayan düşük seviyeli hortlaklar anında küle dönüşür; Spirit Guardians ve Revivify açıldı."
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
