@@ -19,7 +19,10 @@ export type RpgIconName =
   | 'shoe-print'
   | 'skip-next'
   | 'script-text'
-  | 'compass';
+  | 'compass'
+  | 'bag-personal'
+  | 'account-group'
+  | 'treasure-chest';
 
 const ICON_GLYPHS: Record<RpgIconName, string> = {
   'dice-d20': '🎲',
@@ -40,6 +43,9 @@ const ICON_GLYPHS: Record<RpgIconName, string> = {
   'skip-next': '⏭',
   'script-text': '📜',
   compass: '🧭',
+  'bag-personal': '🎒',
+  'account-group': '🎨',
+  'treasure-chest': '🧰',
 };
 
 interface RpgIconProps {

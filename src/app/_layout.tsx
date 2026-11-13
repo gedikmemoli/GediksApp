@@ -1,13 +1,16 @@
+import { Bungee_400Regular, useFonts } from '@expo-google-fonts/bungee';
 import { DarkTheme, ThemeProvider } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import * as Haptics from 'expo-haptics';
+import { NavigationBar } from 'expo-navigation-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { RpgIcon } from '@/components/rpg-icon';
+import { BUNGEE_FONT } from '@/constants/theme';
 import { useRoleStore } from '@/store/useRoleStore';
 
 SplashScreen.preventAutoHideAsync();
@@ -16,9 +19,37 @@ export default function RootLayout() {
   const isDMMode = useRoleStore((state) => state.isDMMode);
   const toggleDMMode = useRoleStore((state) => state.toggleDMMode);
 
+  const [fontsLoaded] = useFonts({
+    Bungee_400Regular,
+  });
+
   useEffect(() => {
-    SplashScreen.hideAsync();
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    NavigationBar.setHidden(true);
+
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        NavigationBar.setHidden(true);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   const handleToggleRole = () => {
     if (Platform.OS !== 'web') {
@@ -31,16 +62,13 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.root}>
       <ThemeProvider value={DarkTheme}>
         <StatusBar style="light" />
+        <NavigationBar hidden style="light" />
         <Stack
           screenOptions={{
             headerStyle: {
               backgroundColor: '#0F172A',
             },
             headerTintColor: '#FFD54F',
-            headerTitleStyle: {
-              fontWeight: '900',
-              fontSize: 16,
-            },
             headerShadowVisible: true,
             headerTitle: () => (
               <View style={styles.headerTitleWrapper}>
@@ -50,12 +78,10 @@ export default function RootLayout() {
                     { backgroundColor: isDMMode ? '#AB47BC' : '#42A5F5' },
                   ]}
                 />
-                <View>
-                  <Text style={styles.appTitle}>GEDIK&apos;S D&D</Text>
-                  <Text style={styles.roleSubtitle}>
-                    {isDMMode ? 'Dungeon Master (DM)' : 'Oyuncu (Player)'}
-                  </Text>
-                </View>
+                <Text style={styles.appTitle}>D&D</Text>
+                <Text style={styles.roleBadge}>
+                  {isDMMode ? 'DM' : 'HERO'}
+                </Text>
               </View>
             ),
             headerRight: () => (
@@ -70,10 +96,12 @@ export default function RootLayout() {
                 ]}>
                 <RpgIcon
                   name={isDMMode ? 'crown' : 'shield-account'}
-                  size={18}
+                  size={16}
                   color="#FFF8E1"
                 />
-                <Text style={styles.roleButtonText}>Rol Değiştir</Text>
+                <Text style={styles.roleButtonText}>
+                  {isDMMode ? 'DM' : 'HERO'}
+                </Text>
               </Pressable>
             ),
           }}>
@@ -97,33 +125,37 @@ const styles = StyleSheet.create({
   headerTitleWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   roleDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     borderWidth: 1.5,
     borderColor: '#FFD54F',
   },
   appTitle: {
+    fontFamily: BUNGEE_FONT,
     color: '#FFD54F',
-    fontSize: 15,
-    fontWeight: '900',
-    letterSpacing: 1.2,
+    fontSize: 18,
+    letterSpacing: 1.5,
   },
-  roleSubtitle: {
+  roleBadge: {
+    fontFamily: BUNGEE_FONT,
     color: '#94A3B8',
     fontSize: 11,
-    fontWeight: '700',
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   roleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 2,
     borderBottomWidth: 4,
     marginRight: Platform.OS === 'web' ? 12 : 4,
@@ -143,10 +175,9 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.96 }],
   },
   roleButtonText: {
+    fontFamily: BUNGEE_FONT,
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
+    fontSize: 11,
+    letterSpacing: 0.5,
   },
 });

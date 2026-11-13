@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { RpgIcon, type RpgIconName } from '@/components/rpg-icon';
+import { BUNGEE_FONT } from '@/constants/theme';
 import frpDatabase from '@/data/frp-classes.json';
 
 const STORAGE_KEY = '@gediksapp:character_v1';
@@ -55,12 +56,12 @@ interface SavedCharacterData {
 const CLASSES = frpDatabase.classes as FrpClassItem[];
 
 export default function CharacterScreen() {
-  const [characterName, setCharacterName] = useState<string>('Thorin Demirbilek');
+  const [characterName, setCharacterName] = useState<string>('THORIN');
   const [selectedClassId, setSelectedClassId] = useState<string>('fighter');
   const [selectedLevel, setSelectedLevel] = useState<LevelKey>('1');
   const [currentHp, setCurrentHp] = useState<number>(13);
   const [usedSlots, setUsedSlots] = useState<Record<string, number>>({});
-  const [saveStatus, setSaveStatus] = useState<string>('Cihaz hafızasından yüklendi');
+  const [isSaved, setIsSaved] = useState<boolean>(false);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
   const activeClass =
@@ -68,7 +69,6 @@ export default function CharacterScreen() {
   const activeLevelData = activeClass.levels[selectedLevel];
   const maxHp = activeLevelData.hp;
 
-  // AsyncStorage'dan kayıtlı karakteri yükle
   useEffect(() => {
     let isMounted = true;
     (async () => {
@@ -89,12 +89,9 @@ export default function CharacterScreen() {
           if (parsed.usedSlots) {
             setUsedSlots(parsed.usedSlots);
           }
-          if (parsed.savedAt) {
-            setSaveStatus(`Son kayıt: ${parsed.savedAt}`);
-          }
         }
       } catch {
-        // İlk açılış veya okuma hatası durumunda varsayılan değerler korunur
+        // fallback
       } finally {
         if (isMounted) setIsLoaded(true);
       }
@@ -113,30 +110,22 @@ export default function CharacterScreen() {
     manualTrigger = false
   ) => {
     try {
-      const now = new Date();
-      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(
-        now.getMinutes()
-      ).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-
       const payload: SavedCharacterData = {
         characterName: nextName,
         classId: nextClassId,
         level: nextLevel,
         currentHp: nextHp,
         usedSlots: nextUsedSlots,
-        savedAt: timeStr,
+        savedAt: '1',
       };
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      setSaveStatus(
-        manualTrigger
-          ? `✓ AsyncStorage'a kaydedildi (${timeStr})`
-          : `Otomatik kaydedildi (${timeStr})`
-      );
+      setIsSaved(true);
       if (manualTrigger && Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
+      setTimeout(() => setIsSaved(false), 2000);
     } catch {
-      setSaveStatus('Kayıt sırasında hata oluştu');
+      // error
     }
   };
 
@@ -191,17 +180,16 @@ export default function CharacterScreen() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      {/* Karakter Başlığı ve İsim Düzenleme */}
+      {/* İsim ve Başlık */}
       <View style={styles.heroCard}>
         <View style={styles.avatarCircle}>
           <RpgIcon
             name={activeClass.icon as RpgIconName}
-            size={34}
+            size={30}
             color="#FFD54F"
           />
         </View>
         <View style={styles.heroInfo}>
-          <Text style={styles.screenTag}>CHARACTER BUILDER • ASYNCSTORAGE</Text>
           <TextInput
             value={characterName}
             onChangeText={(txt) => setCharacterName(txt)}
@@ -214,70 +202,59 @@ export default function CharacterScreen() {
                 usedSlots
               )
             }
-            placeholder="Karakter Adı Girin..."
+            placeholder="NAME"
             placeholderTextColor="#64748B"
             style={styles.nameInput}
           />
-          <Text style={styles.heroClass}>
-            Seviye {selectedLevel} • {activeClass.name} ({activeClass.turkishName})
+          <Text style={styles.heroTag}>
+            {activeClass.name.toUpperCase()} • LVL {selectedLevel}
           </Text>
         </View>
       </View>
 
-      {/* Sınıf (Class) Seçici */}
-      <View style={styles.selectorCard}>
-        <Text style={styles.sectionTitle}>1. FRP SINIFINI SEÇ (CLASS)</Text>
-        <View style={styles.classGrid}>
-          {CLASSES.map((cls) => {
-            const isSelected = cls.id === selectedClassId;
-            return (
-              <Pressable
-                key={cls.id}
-                onPress={() => handleSelectClass(cls.id)}
-                style={[styles.classChip, isSelected && styles.classChipActive]}>
-                <RpgIcon
-                  name={cls.icon as RpgIconName}
-                  size={20}
-                  color={isSelected ? '#FFD54F' : '#94A3B8'}
-                />
-                <Text style={[styles.classChipTitle, isSelected && styles.classChipTitleActive]}>
-                  {cls.name}
-                </Text>
-                <Text style={styles.classChipSubtitle}>{cls.turkishName}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <Text style={styles.classDescription}>{activeClass.description}</Text>
-
-        {/* Seviye (Level) Seçici */}
-        <Text style={[styles.sectionTitle, { marginTop: 6 }]}>
-          2. SEVİYE SEÇ (LEVEL 1 - 5)
-        </Text>
-        <View style={styles.levelRow}>
-          {LEVELS.map((lvl) => {
-            const isSelected = lvl === selectedLevel;
-            return (
-              <Pressable
-                key={lvl}
-                onPress={() => handleSelectLevel(lvl)}
-                style={[styles.levelBtn, isSelected && styles.levelBtnActive]}>
-                <Text style={[styles.levelBtnLabel, isSelected && styles.levelBtnLabelActive]}>
-                  LVL {lvl}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+      {/* Sınıf Seçimi */}
+      <View style={styles.classGrid}>
+        {CLASSES.map((cls) => {
+          const isSelected = cls.id === selectedClassId;
+          return (
+            <Pressable
+              key={cls.id}
+              onPress={() => handleSelectClass(cls.id)}
+              style={[styles.classChip, isSelected && styles.classChipActive]}>
+              <RpgIcon
+                name={cls.icon as RpgIconName}
+                size={18}
+                color={isSelected ? '#FFD54F' : '#94A3B8'}
+              />
+              <Text style={[styles.classChipTitle, isSelected && styles.classChipTitleActive]}>
+                {cls.name.toUpperCase()}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
-      {/* Dinamik Savaş İstatistikleri ve HP */}
+      {/* Seviye Seçimi */}
+      <View style={styles.levelRow}>
+        {LEVELS.map((lvl) => {
+          const isSelected = lvl === selectedLevel;
+          return (
+            <Pressable
+              key={lvl}
+              onPress={() => handleSelectLevel(lvl)}
+              style={[styles.levelBtn, isSelected && styles.levelBtnActive]}>
+              <Text style={[styles.levelBtnLabel, isSelected && styles.levelBtnLabelActive]}>
+                L{lvl}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* HP Bar */}
       <View style={styles.vitalsCard}>
         <View style={styles.hpHeaderRow}>
-          <View style={styles.hpTitleGroup}>
-            <RpgIcon name="heart" size={18} color="#EF5350" />
-            <Text style={styles.vitalsLabel}>CAN PUANI (HP)</Text>
-          </View>
+          <Text style={styles.hpLabel}>HP</Text>
           <Text style={styles.hpValueText}>
             {currentHp} / {maxHp}
           </Text>
@@ -288,10 +265,10 @@ export default function CharacterScreen() {
         </View>
 
         <View style={styles.hpButtonsRow}>
-          <Pressable style={[styles.hpBtn, styles.hpBtnDamage]} onPress={() => adjustHp(-5)}>
+          <Pressable style={[styles.hpBtn, styles.hpBtnDmg]} onPress={() => adjustHp(-5)}>
             <Text style={styles.hpBtnText}>-5</Text>
           </Pressable>
-          <Pressable style={[styles.hpBtn, styles.hpBtnDamage]} onPress={() => adjustHp(-1)}>
+          <Pressable style={[styles.hpBtn, styles.hpBtnDmg]} onPress={() => adjustHp(-1)}>
             <Text style={styles.hpBtnText}>-1</Text>
           </Pressable>
           <Pressable style={[styles.hpBtn, styles.hpBtnHeal]} onPress={() => adjustHp(1)}>
@@ -302,64 +279,45 @@ export default function CharacterScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.combatMetricsRow}>
+        {/* 4 Ana Metrik */}
+        <View style={styles.metricsRow}>
           <View style={styles.metricBox}>
-            <RpgIcon name="shield" size={20} color="#42A5F5" />
-            <Text style={styles.metricValue}>{activeClass.baseAc}</Text>
-            <Text style={styles.metricLabel}>Zırh (AC)</Text>
+            <Text style={styles.metricVal}>{activeClass.baseAc}</Text>
+            <Text style={styles.metricLbl}>AC</Text>
           </View>
           <View style={styles.metricBox}>
-            <RpgIcon name="flash" size={20} color="#FFD54F" />
-            <Text style={styles.metricValue}>{activeLevelData.proficiencyBonus}</Text>
-            <Text style={styles.metricLabel}>Uzmanlık</Text>
+            <Text style={styles.metricVal}>{activeLevelData.proficiencyBonus}</Text>
+            <Text style={styles.metricLbl}>PROF</Text>
           </View>
           <View style={styles.metricBox}>
-            <RpgIcon name="dice-d20" size={20} color="#AB47BC" />
-            <Text style={styles.metricValue}>{activeClass.hitDie}</Text>
-            <Text style={styles.metricLabel}>Can Zarı</Text>
+            <Text style={styles.metricVal}>{activeClass.hitDie.toUpperCase()}</Text>
+            <Text style={styles.metricLbl}>DIE</Text>
           </View>
           <View style={styles.metricBox}>
-            <RpgIcon name="star-four-points" size={20} color="#66BB6A" />
-            <Text style={styles.metricValue}>{activeClass.primaryStat}</Text>
-            <Text style={styles.metricLabel}>Ana Stat</Text>
+            <Text style={styles.metricVal}>{activeClass.primaryStat.split('/')[0].trim()}</Text>
+            <Text style={styles.metricLbl}>STAT</Text>
           </View>
         </View>
       </View>
 
-      {/* Dinamik Aksiyonlar (Sadece seçilen sınıf ve seviyeye ait) */}
-      <View style={styles.dynamicSectionCard}>
-        <View style={styles.cardHeaderRow}>
-          <RpgIcon name="shield-sword" size={20} color="#FFD54F" />
-          <Text style={styles.sectionTitle}>
-            MEVCUT AKSİYONLAR ({activeClass.name.toUpperCase()} • LVL {selectedLevel})
-          </Text>
-        </View>
-        <View style={styles.listContainer}>
+      {/* Aksiyonlar */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionHeading}>ACTIONS</Text>
+        <View style={styles.listWrap}>
           {activeLevelData.actions.map((action, index) => (
-            <View key={index} style={styles.actionItem}>
-              <View style={styles.actionDot} />
+            <View key={index} style={styles.actionRow}>
+              <View style={styles.dot} />
               <Text style={styles.actionText}>{action}</Text>
             </View>
           ))}
         </View>
       </View>
 
-      {/* Dinamik Büyü Slotları (Spell Slots) */}
-      <View style={styles.dynamicSectionCard}>
-        <View style={styles.cardHeaderRow}>
-          <RpgIcon name="book-open-variant" size={20} color="#64B5F6" />
-          <Text style={styles.sectionTitle}>
-            BÜYÜ SLOTLARI (SPELL SLOTS • LVL {selectedLevel})
-          </Text>
-        </View>
-        {spellEntries.length === 0 ? (
-          <View style={styles.noSpellsBox}>
-            <Text style={styles.noSpellsText}>
-              {activeClass.name} sınıfı Seviye {selectedLevel}&apos;de büyü slotu kullanmaz; fiziksel/dövüş yeteneklerine odaklanır.
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.spellSlotsGrid}>
+      {/* Büyü Slotları (varsa) */}
+      {spellEntries.length > 0 && (
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionHeading}>SPELLS</Text>
+          <View style={styles.slotsGrid}>
             {spellEntries.map(([slotTier, maxCount]) => {
               const spent = usedSlots[slotTier] ?? 0;
               const remaining = Math.max(0, maxCount - spent);
@@ -367,70 +325,57 @@ export default function CharacterScreen() {
                 <Pressable
                   key={slotTier}
                   onPress={() => toggleSpellSlot(slotTier, maxCount)}
-                  style={styles.spellSlotCard}>
-                  <Text style={styles.spellSlotTier}>{slotTier}</Text>
-                  <Text style={styles.spellSlotCount}>
-                    {remaining} / {maxCount}
+                  style={styles.slotCard}>
+                  <Text style={styles.slotTierText}>{slotTier.toUpperCase()}</Text>
+                  <Text style={styles.slotCountText}>
+                    {remaining}/{maxCount}
                   </Text>
-                  <View style={styles.slotOrbsRow}>
-                    {Array.from({ length: maxCount }).map((_, idx) => {
-                      const isAvailable = idx < remaining;
-                      return (
-                        <View
-                          key={idx}
-                          style={[
-                            styles.slotOrb,
-                            isAvailable ? styles.slotOrbFull : styles.slotOrbSpent,
-                          ]}
-                        />
-                      );
-                    })}
+                  <View style={styles.orbsRow}>
+                    {Array.from({ length: maxCount }).map((_, idx) => (
+                      <View
+                        key={idx}
+                        style={[
+                          styles.orb,
+                          idx < remaining ? styles.orbFull : styles.orbEmpty,
+                        ]}
+                      />
+                    ))}
                   </View>
-                  <Text style={styles.slotHint}>Harcamak için dokun</Text>
                 </Pressable>
               );
             })}
           </View>
-        )}
-      </View>
-
-      {/* Dinamik Sınıf Özellikleri (Features) */}
-      <View style={styles.dynamicSectionCard}>
-        <View style={styles.cardHeaderRow}>
-          <RpgIcon name="crown" size={20} color="#CE93D8" />
-          <Text style={styles.sectionTitle}>
-            SINIF ÖZELLİKLERİ VE YETENEKLER (LVL {selectedLevel})
-          </Text>
         </View>
-        <View style={styles.listContainer}>
+      )}
+
+      {/* Özellikler */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionHeading}>TRAITS</Text>
+        <View style={styles.listWrap}>
           {activeLevelData.features.map((feat, idx) => (
-            <View key={idx} style={styles.featureBox}>
-              <Text style={styles.featureTitle}>{feat.name}</Text>
-              <Text style={styles.featureDesc}>{feat.description}</Text>
+            <View key={idx} style={styles.traitBox}>
+              <Text style={styles.traitTitle}>{feat.name}</Text>
+              <Text style={styles.traitDesc}>{feat.description}</Text>
             </View>
           ))}
         </View>
       </View>
 
-      {/* AsyncStorage Kayıt Butonu ve Durumu */}
-      <View style={styles.saveFooter}>
-        <Pressable
-          style={({ pressed }) => [styles.saveButton, pressed && styles.saveButtonPressed]}
-          onPress={() =>
-            persistCharacter(
-              characterName,
-              selectedClassId,
-              selectedLevel,
-              currentHp,
-              usedSlots,
-              true
-            )
-          }>
-          <RpgIcon name="script-text" size={20} color="#FFF8E1" />
-          <Text style={styles.saveButtonText}>KARAKTERİ CİHAZA KAYDET</Text>
-        </Pressable>
-        <Text style={styles.saveStatusText}>{saveStatus}</Text>
-      </View>
+      {/* Save Butonu */}
+      <Pressable
+        style={({ pressed }) => [styles.saveBtn, pressed && styles.saveBtnPressed]}
+        onPress={() =>
+          persistCharacter(
+            characterName,
+            selectedClassId,
+            selectedLevel,
+            currentHp,
+            usedSlots,
+            true
+          )
+        }>
+        <Text style={styles.saveBtnText}>{isSaved ? 'SAVED!' : 'SAVE'}</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -441,26 +386,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#0B0F19',
   },
   container: {
-    padding: 16,
-    gap: 14,
+    padding: 14,
+    gap: 12,
     paddingBottom: 36,
   },
   heroCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
     backgroundColor: '#1E293B',
-    borderRadius: 18,
-    padding: 14,
+    borderRadius: 16,
+    padding: 12,
     borderWidth: 2,
     borderColor: '#1E88E5',
     borderBottomWidth: 5,
     borderBottomColor: '#0D47A1',
   },
   avatarCircle: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     backgroundColor: '#0F172A',
     borderWidth: 2,
     borderColor: '#FFD54F',
@@ -471,43 +416,21 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
-  screenTag: {
-    color: '#64B5F6',
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-  },
   nameInput: {
+    fontFamily: BUNGEE_FONT,
     color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '900',
+    fontSize: 18,
     backgroundColor: '#0F172A',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#334155',
   },
-  heroClass: {
+  heroTag: {
+    fontFamily: BUNGEE_FONT,
     color: '#FFD54F',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  selectorCard: {
-    backgroundColor: '#1E293B',
-    borderRadius: 18,
-    padding: 14,
-    gap: 10,
-    borderWidth: 2,
-    borderColor: '#334155',
-    borderBottomWidth: 4,
-    borderBottomColor: '#0F172A',
-  },
-  sectionTitle: {
-    color: '#FFD54F',
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 0.8,
+    fontSize: 11,
   },
   classGrid: {
     flexDirection: 'row',
@@ -515,18 +438,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   classChip: {
-    width: '47%',
+    width: '48%',
     flexGrow: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#1E293B',
     borderRadius: 12,
     paddingVertical: 10,
-    paddingHorizontal: 10,
     borderWidth: 2,
     borderColor: '#334155',
     borderBottomWidth: 4,
     borderBottomColor: '#020617',
     alignItems: 'center',
-    gap: 2,
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
   },
   classChipActive: {
     backgroundColor: '#1E3A8A',
@@ -534,36 +458,22 @@ const styles = StyleSheet.create({
     borderBottomColor: '#9A7D0A',
   },
   classChipTitle: {
+    fontFamily: BUNGEE_FONT,
     color: '#CBD5E1',
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: 12,
   },
   classChipTitleActive: {
     color: '#FFFFFF',
   },
-  classChipSubtitle: {
-    color: '#94A3B8',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  classDescription: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 17,
-    backgroundColor: '#0F172A',
-    padding: 10,
-    borderRadius: 10,
-  },
   levelRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   levelBtn: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#0F172A',
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#1E293B',
     borderWidth: 2,
     borderColor: '#334155',
     borderBottomWidth: 4,
@@ -576,17 +486,17 @@ const styles = StyleSheet.create({
     borderBottomColor: '#9A7D0A',
   },
   levelBtnLabel: {
+    fontFamily: BUNGEE_FONT,
     color: '#94A3B8',
-    fontSize: 13,
-    fontWeight: '900',
+    fontSize: 12,
   },
   levelBtnLabelActive: {
     color: '#FFD54F',
   },
   vitalsCard: {
     backgroundColor: '#1E293B',
-    borderRadius: 18,
-    padding: 14,
+    borderRadius: 16,
+    padding: 12,
     gap: 10,
     borderWidth: 2,
     borderColor: '#334155',
@@ -598,49 +508,39 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  hpTitleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  vitalsLabel: {
-    color: '#E2E8F0',
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.8,
+  hpLabel: {
+    fontFamily: BUNGEE_FONT,
+    color: '#EF5350',
+    fontSize: 14,
   },
   hpValueText: {
+    fontFamily: BUNGEE_FONT,
     color: '#FFD54F',
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: 16,
   },
   hpBarTrack: {
-    height: 12,
+    height: 10,
     backgroundColor: '#0F172A',
-    borderRadius: 6,
+    borderRadius: 5,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#334155',
   },
   hpBarFill: {
     height: '100%',
     backgroundColor: '#EF5350',
-    borderRadius: 6,
   },
   hpButtonsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   hpBtn: {
     flex: 1,
-    paddingVertical: 7,
-    borderRadius: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
     alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 1.5,
     borderBottomWidth: 3,
   },
-  hpBtnDamage: {
+  hpBtnDmg: {
     backgroundColor: '#3B181E',
     borderColor: '#EF5350',
     borderBottomColor: '#7F1D1D',
@@ -651,191 +551,155 @@ const styles = StyleSheet.create({
     borderBottomColor: '#14532D',
   },
   hpBtnText: {
+    fontFamily: BUNGEE_FONT,
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 11,
   },
-  combatMetricsRow: {
+  metricsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     marginTop: 2,
   },
   metricBox: {
     flex: 1,
     backgroundColor: '#0F172A',
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
+    borderRadius: 10,
+    paddingVertical: 6,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#334155',
-    gap: 2,
   },
-  metricValue: {
+  metricVal: {
+    fontFamily: BUNGEE_FONT,
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
+    fontSize: 13,
   },
-  metricLabel: {
-    color: '#94A3B8',
-    fontSize: 10,
-    fontWeight: '700',
+  metricLbl: {
+    fontFamily: BUNGEE_FONT,
+    color: '#64748B',
+    fontSize: 9,
+    marginTop: 1,
   },
-  dynamicSectionCard: {
+  sectionCard: {
     backgroundColor: '#1E293B',
-    borderRadius: 18,
-    padding: 14,
-    gap: 10,
+    borderRadius: 16,
+    padding: 12,
+    gap: 8,
     borderWidth: 2,
     borderColor: '#334155',
     borderBottomWidth: 4,
     borderBottomColor: '#0F172A',
   },
-  cardHeaderRow: {
+  sectionHeading: {
+    fontFamily: BUNGEE_FONT,
+    color: '#FFD54F',
+    fontSize: 13,
+    letterSpacing: 0.5,
+  },
+  listWrap: {
+    gap: 6,
+  },
+  actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  listContainer: {
-    gap: 8,
-  },
-  actionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
     backgroundColor: '#0F172A',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#334155',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
   },
-  actionDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#FFD54F',
   },
   actionText: {
     flex: 1,
-    color: '#F1F5F9',
-    fontSize: 13,
+    color: '#E2E8F0',
+    fontSize: 12,
     fontWeight: '700',
   },
-  noSpellsBox: {
-    backgroundColor: '#0F172A',
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  noSpellsText: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 18,
-  },
-  spellSlotsGrid: {
+  slotsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
-  spellSlotCard: {
-    width: '46%',
+  slotCard: {
+    width: '48%',
     flexGrow: 1,
     backgroundColor: '#0F172A',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 10,
+    padding: 10,
     borderWidth: 1.5,
     borderColor: '#3B82F6',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
-  spellSlotTier: {
+  slotTierText: {
+    fontFamily: BUNGEE_FONT,
     color: '#93C5FD',
-    fontSize: 12,
-    fontWeight: '900',
+    fontSize: 10,
   },
-  spellSlotCount: {
+  slotCountText: {
+    fontFamily: BUNGEE_FONT,
     color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '900',
+    fontSize: 16,
   },
-  slotOrbsRow: {
+  orbsRow: {
     flexDirection: 'row',
-    gap: 6,
-    marginVertical: 2,
+    gap: 4,
+    marginTop: 2,
   },
-  slotOrb: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 1.5,
+  orb: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1,
   },
-  slotOrbFull: {
+  orbFull: {
     backgroundColor: '#3B82F6',
     borderColor: '#93C5FD',
   },
-  slotOrbSpent: {
+  orbEmpty: {
     backgroundColor: 'transparent',
     borderColor: '#475569',
   },
-  slotHint: {
-    color: '#64748B',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  featureBox: {
+  traitBox: {
     backgroundColor: '#0F172A',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-    gap: 4,
+    padding: 10,
+    borderRadius: 8,
+    gap: 2,
   },
-  featureTitle: {
+  traitTitle: {
+    fontFamily: BUNGEE_FONT,
     color: '#FFD54F',
-    fontSize: 14,
-    fontWeight: '900',
+    fontSize: 11,
   },
-  featureDesc: {
+  traitDesc: {
     color: '#CBD5E1',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    lineHeight: 18,
+    lineHeight: 15,
   },
-  saveFooter: {
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
-  },
-  saveButton: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+  saveBtn: {
     backgroundColor: '#16A34A',
-    paddingVertical: 15,
-    borderRadius: 14,
+    paddingVertical: 14,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: '#86EFAC',
     borderBottomWidth: 5,
     borderBottomColor: '#14532D',
+    alignItems: 'center',
   },
-  saveButtonPressed: {
+  saveBtnPressed: {
     opacity: 0.9,
     transform: [{ scale: 0.98 }],
   },
-  saveButtonText: {
+  saveBtnText: {
+    fontFamily: BUNGEE_FONT,
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-  },
-  saveStatusText: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 1,
   },
 });
