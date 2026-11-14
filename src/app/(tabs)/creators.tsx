@@ -1,16 +1,52 @@
+import * as Haptics from 'expo-haptics';
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
-import { RpgIcon } from '@/components/rpg-icon';
+import { RpgIcon, type RpgIconName } from '@/components/rpg-icon';
 import { BUNGEE_FONT } from '@/constants/theme';
 
-const CREATOR_CARDS = [
-  { id: 'c1', name: 'GEDIKS STUDIO', role: 'CORE', badge: '👑', color: '#FFD54F' },
-  { id: 'c2', name: 'FORGE ENGINE', role: 'DEV', badge: '⚒️', color: '#42A5F5' },
-  { id: 'c3', name: 'ARCANE ART', role: 'UI', badge: '✨', color: '#AB47BC' },
+const CREATOR_LINKS: {
+  id: string;
+  title: string;
+  subtitle: string;
+  url: string;
+  icon: RpgIconName;
+  color: string;
+}[] = [
+  {
+    id: 'website',
+    title: 'GEDIK GAMES',
+    subtitle: 'https://gedik.games',
+    url: 'https://gedik.games',
+    icon: 'web',
+    color: '#42A5F5',
+  },
+  {
+    id: 'google-play',
+    title: 'GOOGLE PLAY',
+    subtitle: 'PLAY STORE DEVELOPER',
+    url: 'https://play.google.com/store/apps/dev?id=7067358905053963218&hl=tr',
+    icon: 'google-play',
+    color: '#66BB6A',
+  },
 ];
 
 export default function CreatorsScreen() {
+  const openUrl = (url: string) => {
+    if (Platform.OS !== 'web') {
+      Haptics.selectionAsync();
+    }
+    Linking.openURL(url);
+  };
+
   return (
     <ScrollView
       style={styles.screen}
@@ -21,19 +57,35 @@ export default function CreatorsScreen() {
         <Text style={styles.headerTitle}>CREATORS</Text>
       </View>
 
+      <View style={[styles.card, { borderColor: '#FFD54F' }]}>
+        <RpgIcon name="crown" size={30} color="#FFD54F" />
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardName}>GEDIK GAMES</Text>
+          <Text style={[styles.cardRole, { color: '#FFD54F' }]}>
+            CREATOR & DEVELOPER
+          </Text>
+        </View>
+      </View>
+
       <View style={styles.grid}>
-        {CREATOR_CARDS.map((card) => (
-          <View
-            key={card.id}
-            style={[styles.card, { borderColor: card.color }]}>
-            <Text style={styles.cardEmoji}>{card.badge}</Text>
+        {CREATOR_LINKS.map((item) => (
+          <Pressable
+            key={item.id}
+            onPress={() => openUrl(item.url)}
+            style={({ pressed }) => [
+              styles.card,
+              { borderColor: item.color },
+              pressed && styles.pressed,
+            ]}>
+            <RpgIcon name={item.icon} size={26} color={item.color} />
             <View style={styles.cardInfo}>
-              <Text style={styles.cardName}>{card.name}</Text>
-              <Text style={[styles.cardRole, { color: card.color }]}>
-                {card.role}
+              <Text style={styles.cardName}>{item.title}</Text>
+              <Text style={[styles.cardRole, { color: item.color }]}>
+                {item.subtitle}
               </Text>
             </View>
-          </View>
+            <RpgIcon name="open-in-new" size={18} color="#94A3B8" />
+          </Pressable>
         ))}
       </View>
     </ScrollView>
@@ -82,9 +134,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 5,
     borderBottomColor: '#090D16',
   },
-  cardEmoji: {
-    fontSize: 28,
-  },
   cardInfo: {
     flex: 1,
     gap: 2,
@@ -99,5 +148,9 @@ const styles = StyleSheet.create({
     fontFamily: BUNGEE_FONT,
     fontSize: 11,
     letterSpacing: 1,
+  },
+  pressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.85,
   },
 });

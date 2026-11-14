@@ -1,15 +1,21 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { RpgIcon } from '@/components/rpg-icon';
+import { RpgIcon, type RpgIconName } from '@/components/rpg-icon';
 import { BUNGEE_FONT } from '@/constants/theme';
 
-const WIKI_ENTRIES = [
-  { id: 'w1', tag: 'CRIT', val: 'NAT 20 = 2X DMG', icon: '🎲', color: '#EF5350' },
-  { id: 'w2', tag: 'AC', val: 'D20 + ATK >= AC', icon: '🛡️', color: '#42A5F5' },
-  { id: 'w3', tag: 'DC', val: 'EASY 10 / HARD 15', icon: '🎯', color: '#FFD54F' },
-  { id: 'w4', tag: 'REST', val: 'SHORT 1H / LONG 8H', icon: '⛺', color: '#66BB6A' },
-  { id: 'w5', tag: 'ADV', val: '2D20 PICK HIGH', icon: '⚡', color: '#AB47BC' },
+const WIKI_ENTRIES: {
+  id: string;
+  tag: string;
+  val: string;
+  icon: RpgIconName;
+  color: string;
+}[] = [
+  { id: 'w1', tag: 'CRIT', val: 'NAT 20 = 2X DMG', icon: 'dice-d20', color: '#EF5350' },
+  { id: 'w2', tag: 'AC', val: 'D20 + ATK >= AC', icon: 'shield', color: '#42A5F5' },
+  { id: 'w3', tag: 'DC', val: 'EASY 10 / HARD 15', icon: 'bullseye-arrow', color: '#FFD54F' },
+  { id: 'w4', tag: 'REST', val: 'SHORT 1H / LONG 8H', icon: 'tent', color: '#66BB6A' },
+  { id: 'w5', tag: 'ADV', val: '2D20 PICK HIGH', icon: 'flash', color: '#AB47BC' },
 ];
 
 export default function WikiScreen() {
@@ -28,7 +34,7 @@ export default function WikiScreen() {
           <View
             key={item.id}
             style={[styles.card, { borderColor: item.color }]}>
-            <Text style={styles.cardIcon}>{item.icon}</Text>
+            <RpgIcon name={item.icon} size={24} color={item.color} />
             <View style={styles.cardBody}>
               <Text style={[styles.cardTag, { color: item.color }]}>
                 {item.tag}
@@ -83,9 +89,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderBottomWidth: 5,
     borderBottomColor: '#090D16',
-  },
-  cardIcon: {
-    fontSize: 24,
   },
   cardBody: {
     flex: 1,

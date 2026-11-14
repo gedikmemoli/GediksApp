@@ -2,24 +2,24 @@ import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { RpgIcon } from '@/components/rpg-icon';
+import { RpgIcon, type RpgIconName } from '@/components/rpg-icon';
 import { BUNGEE_FONT } from '@/constants/theme';
 
 type InvItem = {
   id: string;
   name: string;
-  icon: string;
+  icon: RpgIconName;
   qty: number;
   color: string;
 };
 
 const INITIAL_ITEMS: InvItem[] = [
-  { id: 'hp-pot', name: 'POTION', icon: '🧪', qty: 3, color: '#EF5350' },
-  { id: 'sword', name: 'BLADE', icon: '🗡️', qty: 1, color: '#42A5F5' },
-  { id: 'shield', name: 'SHIELD', icon: '🛡️', qty: 1, color: '#FFA726' },
-  { id: 'scroll', name: 'SCROLL', icon: '📜', qty: 2, color: '#AB47BC' },
-  { id: 'key', name: 'KEY', icon: '🗝️', qty: 1, color: '#FFD54F' },
-  { id: 'torch', name: 'TORCH', icon: '🔥', qty: 4, color: '#FF7043' },
+  { id: 'hp-pot', name: 'POTION', icon: 'flask', qty: 3, color: '#EF5350' },
+  { id: 'sword', name: 'BLADE', icon: 'sword', qty: 1, color: '#42A5F5' },
+  { id: 'shield', name: 'SHIELD', icon: 'shield', qty: 1, color: '#FFA726' },
+  { id: 'scroll', name: 'SCROLL', icon: 'script-text', qty: 2, color: '#AB47BC' },
+  { id: 'key', name: 'KEY', icon: 'key-variant', qty: 1, color: '#FFD54F' },
+  { id: 'torch', name: 'TORCH', icon: 'fire', qty: 4, color: '#FF7043' },
 ];
 
 export default function InventoryScreen() {
@@ -79,7 +79,11 @@ export default function InventoryScreen() {
               { borderColor: item.qty > 0 ? item.color : '#334155' },
               item.qty === 0 && styles.slotEmpty,
             ]}>
-            <Text style={styles.slotIcon}>{item.icon}</Text>
+            <RpgIcon
+              name={item.icon}
+              size={30}
+              color={item.qty > 0 ? item.color : '#64748B'}
+            />
             <Text style={styles.slotName}>{item.name}</Text>
 
             <View style={styles.qtyRow}>
@@ -168,9 +172,6 @@ const styles = StyleSheet.create({
   },
   slotEmpty: {
     opacity: 0.45,
-  },
-  slotIcon: {
-    fontSize: 30,
   },
   slotName: {
     fontFamily: BUNGEE_FONT,
