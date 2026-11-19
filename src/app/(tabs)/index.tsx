@@ -22,12 +22,15 @@ import {
 } from '@/components/polyhedral-die';
 import { BUNGEE_FONT } from '@/constants/theme';
 import {
+  computeUnrolledTrayPosition,
+  createUnrolledDiceForEntry,
   DICE_SIDES,
   evaluateRollPool,
-  rollCryptoDie,
-  rollCryptoPool,
+  rollCryptoDieByKind,
+  rollCryptoPoolEntries,
   simulateCryptoTrayPhysics,
   type DiceSides,
+  type PoolEntry,
   type RollMode,
   type SingleDieRoll,
 } from '@/utils/crypto-dice';
@@ -39,30 +42,58 @@ interface DieAnimValues {
   scale: Animated.Value;
 }
 
-const DIE_SIZE = 56;
-const MAX_POOL_SIZE = 12;
+const DIE_SIZE = 60;
+const MAX_POOL_SIZE = 10;
+const DEFAULT_TRAY_WIDTH = 320;
+const DEFAULT_TRAY_HEIGHT = 215;
+
+const INITIAL_ENTRY: PoolEntry = { poolId: 'pool-init-1', sides: 20 };
+const INITIAL_TRAY_DICE: SingleDieRoll[] = createUnrolledDiceForEntry(INITIAL_ENTRY);
+
+function buildInitialAnimMap(): Record<string, DieAnimValues> {
+  const map: Record<string, DieAnimValues> = {};
+  INITIAL_TRAY_DICE.forEach((d, idx) => {
+    const pos = computeUnrolledTrayPosition(
+      idx,
+      INITIAL_TRAY_DICE.length,
+      DEFAULT_TRAY_WIDTH,
+      DEFAULT_TRAY_HEIGHT,
+      DIE_SIZE
+    );
+    map[d.id] = {
+      x: new Animated.Value(pos.x),
+      y: new Animated.Value(pos.y),
+      rot: new Animated.Value(0),
+      scale: new Animated.Value(1),
+    };
+  });
+  return map;
+}
 
 export default function DiceScreen() {
-  // Seçilen zar havuzu ve Owlbear Rodeo mekanikleri
-  const [selectedPool, setSelectedPool] = useState<DiceSides[]>([20]);
+  // Seçilen zar havuzu (her eleman benzersiz poolId taşır)
+  const [poolEntries, setPoolEntries] = useState<PoolEntry[]>([INITIAL_ENTRY]);
+  const [nextIdCounter, setNextIdCounter] = useState<number>(2);
+
+  // Owlbear Rodeo mekanikleri
   const [rollMode, setRollMode] = useState<RollMode>('normal');
   const [modifier, setModifier] = useState<number>(0);
   const [themeId, setThemeId] = useState<DiceThemeId>('dragon');
 
-  // Atılan zarlar ve sonuçlar
-  const [rolledDice, setRolledDice] = useState<SingleDieRoll[]>([]);
+  // Tabladaki aktif zarlar (hem atılmamış READY hem atılmış zarlar)
+  const [trayDice, setTrayDice] = useState<SingleDieRoll[]>(INITIAL_TRAY_DICE);
   const [diceSum, setDiceSum] = useState<number | null>(null);
   const [totalResult, setTotalResult] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState<boolean>(false);
 
-  // Tepsi boyutları (dinamik ölçüm)
+  // Tepsi boyutları
   const [traySize, setTraySize] = useState<{ width: number; height: number }>({
-    width: 320,
-    height: 215,
+    width: DEFAULT_TRAY_WIDTH,
+    height: DEFAULT_TRAY_HEIGHT,
   });
 
-  // Her zarın 2.5B fizik animasyon değerleri
-  const [animMap, setAnimMap] = useState<Record<string, DieAnimValues>>({});
+  // Her zarın 2.5B animasyon değerleri
+  const [animMap, setAnimMap] = useState<Record<string, DieAnimValues>>(buildInitialAnimMap);
   const [totalBannerScale] = useState(() => new Animated.Value(1));
 
   const activeTheme = DICE_THEMES[themeId];
@@ -73,36 +104,154 @@ export default function DiceScreen() {
     }
   };
 
+  /**
+   * Verilen zar listesi için düzenli konum haritası oluşturur veya mevcutları korur
+   */
+  const syncUnrolledLayout = (
+    nextDice: SingleDieRoll[],
+    width: number,
+    height: number,
+    preserveRolledPositions: boolean
+  ) => {
+    const nextMap: Record<string, DieAnimValues> = {};
+    nextDice.forEach((die, idx) => {
+      const existing = animMap[die.id];
+      const pos = computeUnrolledTrayPosition(
+        idx,
+        nextDice.length,
+        width,
+        height,
+        DIE_SIZE
+      );
+
+      if (existing && preserveRolledPositions && die.isRolled) {
+        nextMap[die.id] = existing;
+      } else if (existing) {
+        nextMap[die.id] = existing;
+        Animated.parallel([
+          Animated.spring(existing.x, {
+            toValue: pos.x,
+            friction: 7,
+            tension: 65,
+            useNativeDriver: true,
+          }),
+          Animated.spring(existing.y, {
+            toValue: pos.y,
+            friction: 7,
+            tension: 65,
+            useNativeDriver: true,
+          }),
+          Animated.spring(existing.rot, {
+            toValue: 0,
+            friction: 7,
+            tension: 65,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } else {
+        const scaleVal = new Animated.Value(0.6);
+        nextMap[die.id] = {
+          x: new Animated.Value(pos.x),
+          y: new Animated.Value(pos.y),
+          rot: new Animated.Value(0),
+          scale: scaleVal,
+        };
+        Animated.spring(scaleVal, {
+          toValue: 1,
+          friction: 5,
+          tension: 80,
+          useNativeDriver: true,
+        }).start();
+      }
+    });
+    setAnimMap(nextMap);
+  };
+
   const handleTrayLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     if (width > 100 && height > 100) {
       setTraySize({ width, height });
+      const hasAnyRolled = trayDice.some((d) => d.isRolled);
+      if (!hasAnyRolled && trayDice.length > 0) {
+        syncUnrolledLayout(trayDice, width, height, false);
+      }
     }
   };
 
+  /**
+   * Havuza yeni zar ekler ve tablanın üzerinde atılmamış (READY) halini anında gösterir.
+   */
   const addDieToPool = (sides: DiceSides) => {
     if (isRolling) return;
-    if (selectedPool.length >= MAX_POOL_SIZE) {
+    if (poolEntries.length >= MAX_POOL_SIZE) {
       triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy);
       return;
     }
     triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedPool((prev) => [...prev, sides]);
+
+    const newEntry: PoolEntry = {
+      poolId: `pool-${nextIdCounter}`,
+      sides,
+    };
+    setNextIdCounter((prev) => prev + 1);
+
+    const nextEntries = [...poolEntries, newEntry];
+    setPoolEntries(nextEntries);
+
+    // Tabladaki otomatik Adv/Dis kopyalarını temizle, gerçek havuz zarlarına yenisini ekle
+    const baseTrayDice = trayDice.filter((d) => !d.poolId.endsWith('-advpair'));
+    const spawnedDice = createUnrolledDiceForEntry(newEntry);
+    const nextTrayDice = [...baseTrayDice, ...spawnedDice];
+
+    setTrayDice(nextTrayDice);
+    syncUnrolledLayout(nextTrayDice, traySize.width, traySize.height, true);
   };
 
-  const removeDieFromPool = (indexToRemove: number) => {
+  /**
+   * Seçilen zarı hem aşağıdaki listeden hem de tabladan anında siler ve toplamı günceller.
+   */
+  const removeDieFromPool = (poolIdToRemove: string) => {
     if (isRolling) return;
     triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedPool((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+
+    const nextEntries = poolEntries.filter((entry) => entry.poolId !== poolIdToRemove);
+    setPoolEntries(nextEntries);
+
+    // Tabladan bu poolId'ye ait tüm zarları (D100 ise hem 100'lük hem 10'luk zarı) ve adv kopyasını sil
+    const remainingDice = trayDice.filter(
+      (d) => d.poolId !== poolIdToRemove && d.poolId !== `${poolIdToRemove}-advpair`
+    );
+
+    const anyRolledLeft = remainingDice.some((d) => d.isRolled);
+    if (anyRolledLeft) {
+      const { evaluatedRolls, diceSum: newSum, total } = evaluateRollPool(
+        remainingDice,
+        rollMode,
+        modifier
+      );
+      setTrayDice(evaluatedRolls);
+      setDiceSum(newSum);
+      setTotalResult(total);
+      syncUnrolledLayout(evaluatedRolls, traySize.width, traySize.height, true);
+    } else {
+      setTrayDice(remainingDice);
+      setDiceSum(null);
+      setTotalResult(null);
+      syncUnrolledLayout(remainingDice, traySize.width, traySize.height, false);
+    }
   };
 
+  /**
+   * Zar tablasının sağ üst köşesindeki kırmızı X tuşu: Tüm tablayı ve havuzu sıfırlar.
+   */
   const clearPool = () => {
     if (isRolling) return;
     triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
-    setSelectedPool([]);
-    setRolledDice([]);
+    setPoolEntries([]);
+    setTrayDice([]);
     setDiceSum(null);
     setTotalResult(null);
+    setModifier(0);
     setAnimMap({});
   };
 
@@ -110,13 +259,13 @@ export default function DiceScreen() {
     if (isRolling) return;
     triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
     setRollMode(nextMode);
-    if (rolledDice.length > 0) {
+    if (trayDice.some((d) => d.isRolled)) {
       const { evaluatedRolls, diceSum: newSum, total } = evaluateRollPool(
-        rolledDice,
+        trayDice,
         nextMode,
         modifier
       );
-      setRolledDice(evaluatedRolls);
+      setTrayDice(evaluatedRolls);
       setDiceSum(newSum);
       setTotalResult(total);
     }
@@ -127,31 +276,29 @@ export default function DiceScreen() {
     triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
     const nextMod = Math.max(-20, Math.min(30, modifier + delta));
     setModifier(nextMod);
-    if (rolledDice.length > 0) {
+    if (trayDice.some((d) => d.isRolled)) {
       const { evaluatedRolls, diceSum: newSum, total } = evaluateRollPool(
-        rolledDice,
+        trayDice,
         rollMode,
         nextMod
       );
-      setRolledDice(evaluatedRolls);
+      setTrayDice(evaluatedRolls);
       setDiceSum(newSum);
       setTotalResult(total);
     }
   };
 
   /**
-   * Kriptografik zar havuzunu atar ve Owlbear Rodeo tarzı
-   * deterministik 2.5B tepsi fiziği simülasyonunu oynatır.
+   * Kriptografik zar havuzunu atar ve 2.5B tepsi fiziği simülasyonunu oynatır.
    */
   const rollSelectedDice = async () => {
-    if (isRolling || selectedPool.length === 0) return;
+    if (isRolling || poolEntries.length === 0) return;
     setIsRolling(true);
 
     triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy);
 
-    // 1. Kriptografik zar sonuçlarını ve fizik yörüngelerini hesapla
-    const { rolls, diceSum: finalSum, total: finalTotal } = await rollCryptoPool(
-      selectedPool,
+    const { rolls, diceSum: finalSum, total: finalTotal } = await rollCryptoPoolEntries(
+      poolEntries,
       rollMode,
       modifier
     );
@@ -163,7 +310,6 @@ export default function DiceScreen() {
       DIE_SIZE
     );
 
-    // 2. Yeni zarların başlangıç animasyon değerlerini hazırla
     const nextAnimMap: Record<string, DieAnimValues> = {};
     for (const traj of trajectories) {
       const firstWp = traj.waypoints[0];
@@ -175,9 +321,8 @@ export default function DiceScreen() {
       };
     }
     setAnimMap(nextAnimMap);
-    setRolledDice(rolls);
+    setTrayDice(rolls);
 
-    // 3. Çok adımlı sekme ve çarpışma animasyonlarını oluştur
     const stepDuration = 95;
     const allDieAnimations = trajectories.map((traj) => {
       const anim = nextAnimMap[traj.id];
@@ -213,7 +358,6 @@ export default function DiceScreen() {
       return Animated.sequence(stepAnimations);
     });
 
-    // Sekme anlarında dokunsal (haptic) çarpışma hissi
     const bounceTimers = [90, 210, 340, 470].map((delay, idx) =>
       setTimeout(() => {
         triggerHaptic(
@@ -238,7 +382,7 @@ export default function DiceScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
 
-    totalBannerScale.setValue(0.88);
+    totalBannerScale.setValue(0.9);
     Animated.spring(totalBannerScale, {
       toValue: 1,
       friction: 4,
@@ -248,18 +392,30 @@ export default function DiceScreen() {
   };
 
   /**
-   * Tepsideki veya sonuç listesindeki tek bir zara dokunulduğunda
-   * sadece o zarı kriptografik olarak yeniden fırlatır (Single Die Reroll).
+   * Tabladaki veya aşağıdaki sonuç kartındaki tek bir zara dokunulduğunda
+   * (henüz hiç zar atılmamışsa tümünü atar, atılmışsa sadece o tekil zarı yeniden atar).
    */
-  const rerollSingleDie = async (rollId: string) => {
+  const handlePressDie = async (rollId: string) => {
     if (isRolling) return;
-    const targetDie = rolledDice.find((d) => d.id === rollId);
+
+    const anyRolled = trayDice.some((d) => d.isRolled);
+    if (!anyRolled) {
+      await rollSelectedDice();
+      return;
+    }
+
+    const targetDie = trayDice.find((d) => d.id === rollId);
     if (!targetDie) return;
 
     setIsRolling(true);
     triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
 
-    const { value: newValue, rawByte: newByte } = await rollCryptoDie(targetDie.sides);
+    const {
+      value: newValue,
+      displayValue: newDisplay,
+      rawByte: newByte,
+    } = await rollCryptoDieByKind(targetDie.sides, targetDie.dieKind);
+
     const [singleTraj] = await simulateCryptoTrayPhysics(
       [rollId],
       traySize.width,
@@ -291,7 +447,7 @@ export default function DiceScreen() {
             useNativeDriver: true,
           }),
           Animated.timing(anim.scale, {
-            toValue: isLast ? 1 : 1.25,
+            toValue: isLast ? 1 : 1.24,
             duration: 75,
             useNativeDriver: true,
           }),
@@ -308,14 +464,16 @@ export default function DiceScreen() {
       now.getMinutes()
     ).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
-    const updatedRaw = rolledDice.map((d) =>
+    const updatedRaw = trayDice.map((d) =>
       d.id === rollId
         ? {
             ...d,
             value: newValue,
+            displayValue: newDisplay,
             rawByte: newByte,
             timestamp: timeStr,
-            rerollCount: (d.rerollCount ?? 0) + 1,
+            isRolled: true,
+            rerollCount: d.isRolled ? (d.rerollCount ?? 0) + 1 : 0,
           }
         : d
     );
@@ -326,7 +484,7 @@ export default function DiceScreen() {
       modifier
     );
 
-    setRolledDice(evaluatedRolls);
+    setTrayDice(evaluatedRolls);
     setDiceSum(newSum);
     setTotalResult(newTotal);
     setIsRolling(false);
@@ -335,6 +493,8 @@ export default function DiceScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   };
+
+  const rolledOnlyDice = trayDice.filter((d) => d.isRolled);
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
@@ -401,7 +561,6 @@ export default function DiceScreen() {
       <View style={styles.trayOuterFrame}>
         {/* Köşe Perçinleri */}
         <View style={[styles.cornerRivet, styles.rivetTL]} />
-        <View style={[styles.cornerRivet, styles.rivetTR]} />
         <View style={[styles.cornerRivet, styles.rivetBL]} />
         <View style={[styles.cornerRivet, styles.rivetBR]} />
 
@@ -415,27 +574,36 @@ export default function DiceScreen() {
             />
           </View>
 
+          {/* Sağ Üst Köşe Kırmızı "X" Silme Tuşu */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.trayClearBtn,
+              (poolEntries.length === 0 && trayDice.length === 0 && modifier === 0) &&
+                styles.trayClearBtnDimmed,
+              pressed && styles.trayClearBtnPressed,
+            ]}
+            onPress={clearPool}
+            disabled={isRolling || (poolEntries.length === 0 && trayDice.length === 0 && modifier === 0)}>
+            <Text style={styles.trayClearBtnText}>X</Text>
+          </Pressable>
+
           {/* Tepsi Boşken Gösterilecek Başlangıç Durumu */}
-          {rolledDice.length === 0 && (
-            <Pressable
-              style={styles.emptyTrayPrompt}
-              onPress={rollSelectedDice}
-              disabled={selectedPool.length === 0 || isRolling}>
+          {trayDice.length === 0 && (
+            <View style={styles.emptyTrayPrompt} pointerEvents="none">
               <MaterialCommunityIcons
                 name="dice-d20-outline"
-                size={46}
+                size={42}
                 color={activeTheme.accentColor}
               />
+              <Text style={styles.emptyTrayTitle}>ZAR TABLASI BOŞ</Text>
               <Text style={styles.emptyTraySub}>
-                {selectedPool.length > 0
-                  ? 'Tepsiye dokun veya ROLL butonuna bas'
-                  : 'Aşağıdan zar seçerek havuza ekle'}
+                Aşağıdan zar seçtiğinde tablada aktif olarak belirecek
               </Text>
-            </Pressable>
+            </View>
           )}
 
-          {/* Fiziksel Zarlar */}
-          {rolledDice.map((roll) => {
+          {/* Tabladaki Zarlar (Hem Atılmamış READY hem Atılmış Zarlar) */}
+          {trayDice.map((roll) => {
             const anim = animMap[roll.id];
             if (!anim) return null;
             return (
@@ -448,24 +616,26 @@ export default function DiceScreen() {
                 animRot={anim.rot}
                 animScale={anim.scale}
                 isRolling={isRolling}
-                onPressReroll={rerollSingleDie}
+                onPressDie={handlePressDie}
                 size={DIE_SIZE}
               />
             );
           })}
 
           {/* Tepsi Alt Bilgi Çubuğu */}
-          {rolledDice.length > 0 && !isRolling && (
+          {trayDice.length > 0 && !isRolling && (
             <View style={styles.trayFooterHint} pointerEvents="none">
               <Text style={styles.trayFooterHintText}>
-                ZARA DOKUN: TEKİL YENİDEN AT (REROLL)
+                {rolledOnlyDice.length > 0
+                  ? 'ZARA DOKUN: TEKİL YENİDEN AT (REROLL)'
+                  : 'ZARLAR HAZIR • THROW İLE FIRLAT'}
               </Text>
             </View>
           )}
         </View>
 
-        {/* Tepsi Üstü Toplam Sonuç Rozeti */}
-        {totalResult !== null && (
+        {/* Aynı Hattı Bölüşen TOTAL Kutusu (Sol) + THROW Tuşu (Sağ) */}
+        <View style={styles.totalAndThrowRow}>
           <Animated.View
             style={[
               styles.totalBanner,
@@ -483,23 +653,42 @@ export default function DiceScreen() {
                     : 'TOTAL'}
               </Text>
               <Text style={styles.formulaText}>
-                DICE {diceSum ?? 0}{' '}
+                {diceSum !== null ? `DICE ${diceSum}` : `${trayDice.length} READY`}
                 {modifier !== 0
-                  ? `${modifier > 0 ? `+ ${modifier}` : `- ${Math.abs(modifier)}`} MOD`
+                  ? ` ${modifier > 0 ? `+ ${modifier}` : `- ${Math.abs(modifier)}`} MOD`
                   : ''}
               </Text>
             </View>
             <Text style={[styles.totalValueText, { color: activeTheme.accentColor }]}>
-              {isRolling ? '...' : totalResult}
+              {isRolling ? '...' : totalResult !== null ? totalResult : '--'}
             </Text>
           </Animated.View>
-        )}
+
+          <TouchableOpacity
+            style={[
+              styles.throwBtnInline,
+              {
+                backgroundColor: activeTheme.facetBg,
+                borderColor: activeTheme.borderColor,
+                borderBottomColor: activeTheme.bevelColor,
+              },
+              (isRolling || poolEntries.length === 0) && styles.rollBtnDisabled,
+            ]}
+            onPress={rollSelectedDice}
+            disabled={isRolling || poolEntries.length === 0}
+            activeOpacity={0.8}>
+            <MaterialCommunityIcons name="dice-multiple" size={18} color="#FFFFFF" />
+            <Text style={styles.throwBtnInlineText}>
+              {isRolling ? '...' : 'THROW'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Zar Seçim Butonları: D4, D6, D8, D10, D12, D20, D100 */}
       <View style={styles.selectorContainer}>
         {DICE_SIDES.map((sides) => {
-          const count = selectedPool.filter((s) => s === sides).length;
+          const count = poolEntries.filter((e) => e.sides === sides).length;
           return (
             <TouchableOpacity
               key={sides}
@@ -536,18 +725,18 @@ export default function DiceScreen() {
         })}
       </View>
 
-      {/* Seçilen Zar Havuzu & Bonus (Modifier) Ayarı */}
+      {/* Seçilen Zar Havuzu & Bonus (Modifier) Ayarı (CLR Tuşu Kaldırıldı) */}
       <View style={styles.poolWrap}>
         <View style={styles.poolHeader}>
           <View style={styles.poolTitleRow}>
             <Text style={styles.poolCountText}>
-              {selectedPool.length > 0
-                ? `${selectedPool.length}/${MAX_POOL_SIZE} DICE`
+              {poolEntries.length > 0
+                ? `${poolEntries.length}/${MAX_POOL_SIZE} SELECTED`
                 : 'EMPTY POOL'}
             </Text>
-            {rollMode !== 'normal' && selectedPool.length === 1 && (
+            {rollMode !== 'normal' && poolEntries.length === 1 && (
               <View style={styles.autoPairBadge}>
-                <Text style={styles.autoPairText}>AUTO 2x D{selectedPool[0]}</Text>
+                <Text style={styles.autoPairText}>AUTO 2x D{poolEntries[0].sides}</Text>
               </View>
             )}
           </View>
@@ -571,65 +760,49 @@ export default function DiceScreen() {
                 <Text style={styles.modStepBtnText}>+</Text>
               </Pressable>
             </View>
-
-            {(selectedPool.length > 0 || modifier !== 0) && (
-              <Pressable
-                style={styles.clrBtn}
-                onPress={() => {
-                  clearPool();
-                  setModifier(0);
-                }}>
-                <Text style={styles.clrBtnText}>CLR</Text>
-              </Pressable>
-            )}
           </View>
         </View>
 
-        {selectedPool.length > 0 && (
+        {poolEntries.length > 0 && (
           <View style={styles.chipsRow}>
-            {selectedPool.map((sides, idx) => (
+            {poolEntries.map((entry) => (
               <Pressable
-                key={`${sides}-${idx}`}
-                onPress={() => removeDieFromPool(idx)}
+                key={entry.poolId}
+                onPress={() => removeDieFromPool(entry.poolId)}
                 style={styles.chip}>
-                <Text style={styles.chipText}>D{sides} ×</Text>
+                <Text style={styles.chipText}>
+                  {entry.sides === 100 ? 'D100 (100+10) ×' : `D${entry.sides} ×`}
+                </Text>
               </Pressable>
             ))}
           </View>
         )}
       </View>
 
-      {/* ROLL Butonu */}
-      <TouchableOpacity
-        style={[
-          styles.rollBtn,
-          {
-            backgroundColor: activeTheme.facetBg,
-            borderColor: activeTheme.borderColor,
-            borderBottomColor: activeTheme.bevelColor,
-          },
-          (isRolling || selectedPool.length === 0) && styles.rollBtnDisabled,
-        ]}
-        onPress={rollSelectedDice}
-        disabled={isRolling || selectedPool.length === 0}
-        activeOpacity={0.8}>
-        <MaterialCommunityIcons name="dice-multiple" size={22} color="#FFFFFF" />
-        <Text style={styles.rollBtnText}>
-          {isRolling ? 'TUMBLING IN TRAY...' : 'THROW DICE'}
-        </Text>
-      </TouchableOpacity>
-
       {/* Tekil Zar Sonuç Kartları (Dokununca Tekil Reroll Yapar) */}
-      {rolledDice.length > 0 && (
+      {rolledOnlyDice.length > 0 && (
         <View style={styles.resultsGrid}>
-          {rolledDice.map((roll) => {
-            const isCrit = !roll.dropped && roll.value === roll.sides;
-            const isOne = !roll.dropped && roll.value === 1;
+          {rolledOnlyDice.map((roll) => {
+            const isCrit =
+              !roll.dropped &&
+              ((roll.dieKind === 'standard' && roll.value === roll.sides) ||
+                (roll.dieKind === 'd100_tens' && roll.value === 90) ||
+                (roll.dieKind === 'd100_ones' && roll.value === 10));
+            const isOne =
+              !roll.dropped && roll.dieKind === 'standard' && roll.value === 1;
+
+            const cardTitle =
+              roll.dieKind === 'd100_tens'
+                ? 'D100 (10x)'
+                : roll.dieKind === 'd100_ones'
+                  ? 'D10 (1x)'
+                  : `D${roll.sides}`;
+
             return (
               <Pressable
                 key={roll.id}
                 disabled={isRolling}
-                onPress={() => rerollSingleDie(roll.id)}
+                onPress={() => handlePressDie(roll.id)}
                 style={({ pressed }) => [
                   styles.resultCard,
                   isCrit && styles.resultCardCrit,
@@ -638,7 +811,7 @@ export default function DiceScreen() {
                   pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] },
                 ]}>
                 <View style={styles.resultCardHeader}>
-                  <Text style={styles.resultCardDie}>D{roll.sides}</Text>
+                  <Text style={styles.resultCardDie}>{cardTitle}</Text>
                   {(roll.rerollCount ?? 0) > 0 && (
                     <Text style={styles.rerollTag}>↻{roll.rerollCount}</Text>
                   )}
@@ -650,10 +823,12 @@ export default function DiceScreen() {
                     isOne && styles.resultValOne,
                     roll.dropped && styles.resultValDropped,
                   ]}>
-                  {roll.value}
+                  {roll.displayValue}
                 </Text>
                 <Text style={styles.byteMetaText}>
-                  {roll.dropped ? 'DROPPED' : `0x${roll.rawByte.toString(16).toUpperCase().padStart(2, '0')}`}
+                  {roll.dropped
+                    ? 'DROPPED'
+                    : `0x${roll.rawByte.toString(16).toUpperCase().padStart(2, '0')}`}
                 </Text>
               </Pressable>
             );
@@ -775,7 +950,6 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   rivetTL: { top: 6, left: 6 },
-  rivetTR: { top: 6, right: 6 },
   rivetBL: { bottom: 6, left: 6 },
   rivetBR: { bottom: 6, right: 6 },
   trayInnerFelt: {
@@ -797,12 +971,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  trayClearBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: '#B91C1C',
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
+    borderBottomWidth: 3.5,
+    borderBottomColor: '#450A0A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 30,
+  },
+  trayClearBtnDimmed: {
+    opacity: 0.35,
+  },
+  trayClearBtnPressed: {
+    transform: [{ scale: 0.92 }],
+  },
+  trayClearBtnText: {
+    fontFamily: BUNGEE_FONT,
+    color: '#FFFFFF',
+    fontSize: 13,
+    lineHeight: 16,
+  },
   emptyTrayPrompt: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+  },
+  emptyTrayTitle: {
+    fontFamily: BUNGEE_FONT,
+    color: '#E2E8F0',
+    fontSize: 13,
+    letterSpacing: 0.8,
   },
   emptyTraySub: {
     color: '#64748B',
@@ -823,12 +1031,18 @@ const styles = StyleSheet.create({
     color: 'rgba(148, 163, 184, 0.55)',
     letterSpacing: 0.6,
   },
-  totalBanner: {
+  totalAndThrowRow: {
     marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 8,
+  },
+  totalBanner: {
+    flex: 1,
     backgroundColor: '#0F172A',
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderWidth: 1.5,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -840,17 +1054,38 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontFamily: BUNGEE_FONT,
     color: '#CBD5E1',
-    fontSize: 11,
-    letterSpacing: 0.6,
+    fontSize: 10.5,
+    letterSpacing: 0.5,
   },
   formulaText: {
     fontFamily: BUNGEE_FONT,
     color: '#64748B',
-    fontSize: 9.5,
+    fontSize: 9,
   },
   totalValueText: {
     fontFamily: BUNGEE_FONT,
-    fontSize: 28,
+    fontSize: 25,
+  },
+  throwBtnInline: {
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderBottomWidth: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  throwBtnInlineText: {
+    fontFamily: BUNGEE_FONT,
+    color: '#FFFFFF',
+    fontSize: 14,
+    letterSpacing: 0.8,
+  },
+  rollBtnDisabled: {
+    backgroundColor: '#475569',
+    borderColor: '#64748B',
+    borderBottomColor: '#1E293B',
   },
   selectorContainer: {
     flexDirection: 'row',
@@ -965,19 +1200,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     paddingHorizontal: 8,
   },
-  clrBtn: {
-    backgroundColor: '#3B181E',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#EF5350',
-  },
-  clrBtnText: {
-    fontFamily: BUNGEE_FONT,
-    color: '#FFCDD2',
-    fontSize: 9.5,
-  },
   chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -995,28 +1217,6 @@ const styles = StyleSheet.create({
     fontFamily: BUNGEE_FONT,
     color: '#FFD54F',
     fontSize: 10.5,
-  },
-  rollBtn: {
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderBottomWidth: 5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  rollBtnDisabled: {
-    backgroundColor: '#475569',
-    borderColor: '#64748B',
-    borderBottomColor: '#1E293B',
-  },
-  rollBtnText: {
-    fontFamily: BUNGEE_FONT,
-    color: '#FFFFFF',
-    fontSize: 16,
-    letterSpacing: 1,
   },
   resultsGrid: {
     flexDirection: 'row',
